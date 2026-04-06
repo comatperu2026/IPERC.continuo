@@ -2,154 +2,218 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPERC CONTINUO - COMATPERU</title>
+    
     <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
     <style>
-        :root { --primary: #1a252f; --success: #27ae60; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; display: flex; justify-content: center; }
-        .app-card { background: white; width: 100%; max-width: 480px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); overflow: hidden; }
-        .header { background: var(--primary); color: white; padding: 15px; text-align: center; }
+        :root { --primary: #1a252f; --success: #27ae60; --warning: #f39c12; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; justify-content: center; }
+        .app-card { background: white; width: 100%; max-width: 500px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: var(--primary); color: white; padding: 20px; text-align: center; border-bottom: 5px solid var(--warning); }
         .content { padding: 20px; }
-        #video-container { width: 100%; height: 250px; background: #000; border-radius: 8px; position: relative; margin: 15px 0; border: 3px solid #ddd; }
-        video, #preview { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; }
-        #preview { display: none; border-color: var(--success); }
-        .epp-box { display: grid; grid-template-columns: 1fr; gap: 8px; background: #f9f9f9; padding: 12px; border: 1px solid #eee; margin-top: 10px; }
-        .btn-send { width: 100%; padding: 18px; background: var(--success); color: white; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; display: none; font-size: 1.1rem; }
-        input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        #loader { display: none; color: #d35400; font-weight: bold; margin-top: 10px; }
+        .info-auto { font-size: 0.85rem; color: #555; background: #eef2f3; padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid var(--primary); }
+        
+        /* Contenedor de Cámara mejorado */
+        #video-container { width: 100%; height: 280px; background: #000; border-radius: 12px; position: relative; margin: 15px 0; overflow: hidden; border: 3px solid #ddd; }
+        video, #preview { width: 100%; height: 100%; object-fit: cover; }
+        #preview { display: none; border: 4px solid var(--success); }
+        
+        .status-msg { text-align: center; font-weight: bold; padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 0.9rem; }
+        .loading { background: #fff3cd; color: #856404; }
+        .done { background: #d4edda; color: #155724; }
+
+        input, textarea { width: 100%; padding: 12px; margin-top: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        .epp-grid { display: grid; grid-template-columns: 1fr; gap: 10px; background: #fdfdfd; padding: 15px; border: 1px solid #eee; margin-top: 10px; border-radius: 8px; }
+        .epp-item { display: flex; align-items: center; font-size: 0.9rem; cursor: pointer; }
+        .epp-item input { width: auto; margin-right: 12px; transform: scale(1.3); }
+
+        .btn-submit { width: 100%; padding: 18px; background: var(--success); color: white; border: none; font-weight: bold; border-radius: 10px; cursor: pointer; display: none; font-size: 1.2rem; margin-top: 25px; transition: 0.3s; }
+        .btn-submit:active { transform: scale(0.98); background: #1e8449; }
+        #loader-envio { display: none; text-align: center; color: var(--warning); font-weight: bold; padding: 10px; }
     </style>
 </head>
 <body>
 
 <div class="app-card">
     <div class="header">
-        <h2 style="margin:0">IPERC CONTINUO</h2>
-        <small>COMATPERU - Taller de Producción</small>
+        <h1 style="margin:0; font-size: 1.4rem; letter-spacing: 1px;">IPERC CONTINUO</h1>
+        <small>COMATPERU - SEGURIDAD INDUSTRIAL</small>
     </div>
 
     <div class="content">
-        <p style="font-size: 0.8rem; color: #666;">Lugar: Taller de producción COMATPERU</p>
-        
-        <label><b>Nombre del Trabajador:</b></label>
-        <input type="text" id="nombre" placeholder="Nombre completo...">
+        <div class="info-auto">
+            <div id="txtFecha">Cargando fecha...</div>
+            <div>Lugar: <strong>Taller de producción COMATPERU</strong></div>
+        </div>
+
+        <label><b>1. Identificación del Trabajador:</b></label>
+        <input type="text" id="nombre" placeholder="Nombres y Apellidos completos">
 
         <div id="video-container">
             <video id="webcam" autoplay muted playsinline></video>
             <img id="preview">
         </div>
-        <p id="status" style="text-align:center; font-weight:bold; color: #856404;">Cargando IA...</p>
+        <div id="status" class="status-msg loading">Esperando nombre y rostro...</div>
 
-        <div id="form-detalles" style="display:none;">
-            <label><b>Actividad a desarrollar:</b></label>
-            <textarea id="actividad" rows="2" placeholder="Describa la tarea..."></textarea>
+        <div id="form-iperc" style="display:none;">
+            <label><b>2. Actividad a desarrollar hoy:</b></label>
+            <textarea id="actividad" rows="3" placeholder="Ej: Soldadura de estructuras, corte de planchas..."></textarea>
 
-            <label style="margin-top:15px; display:block;"><b>EPP Requerido:</b></label>
-            <div class="epp-box" id="eppList">
-                <label><input type="checkbox" value="Casco con Barbiquejo"> Casco con Barbiquejo</label>
-                <label><input type="checkbox" value="Protección Visual"> Protección Visual (Lentes)</label>
-                <label><input type="checkbox" value="Careta de Soldar/Esmerilar"> Careta de Soldar / Esmerilar</label>
-                <label><input type="checkbox" value="Prot. Respiratoria"> Prot. Respiratoria</label>
-                <label><input type="checkbox" value="Zapato de seguridad"> Zapato de seguridad</label>
-                <label><input type="checkbox" value="Guantes de tarea"> Guantes de seguridad</label>
+            <label style="margin-top:20px; display:block;"><b>3. Marque el EPP a utilizar:</b></label>
+            <div class="epp-grid" id="eppChecklist">
+                <label class="epp-item"><input type="checkbox" value="Casco con Barbiquejo"> Casco con Barbiquejo</label>
+                <label class="epp-item"><input type="checkbox" value="Protección Visual (Lentes)"> Protección Visual (Lentes)</label>
+                <label class="epp-item"><input type="checkbox" value="Careta de Soldar / Esmerilar"> Careta de Soldar / Esmerilar</label>
+                <label class="epp-item"><input type="checkbox" value="Protección Auditiva"> Protección Auditiva</label>
+                <label class="epp-item"><input type="checkbox" value="Protección Respiratoria"> Protección Respiratoria</label>
+                <label class="epp-item"><input type="checkbox" value="Guantes de seguridad"> Guantes de seguridad</label>
+                <label class="epp-item"><input type="checkbox" value="Zapato de seguridad"> Zapato de seguridad</label>
+                <label class="epp-item"><input type="checkbox" value="Traje de protección"> Traje de protección</label>
             </div>
             
-            <div id="loader">Enviando a SSOMA, espere...</div>
-            <button class="btn-send" id="btnEnviar">FIRMAR Y ENVIAR A SSOMA</button>
+            <div id="loader-envio">Procesando y enviando a SSOMA...</div>
+            <button class="btn-submit" id="btnFinalizar">FIRMAR Y ENVIAR FORMATO</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- CONFIGURACIÓN EMAILJS ---
+    // --- 1. CONFIGURACIÓN INICIAL ---
     (function() {
-        emailjs.init("TcZn-gA70Gb6W90dO"); // Reemplaza con tu Public Key de EmailJS
+        // REEMPLAZA ESTO CON TU PUBLIC KEY DE EMAILJS
+        emailjs.init("TU_PUBLIC_KEY"); 
     })();
 
-    const { jsPDF } = window.jspdf;
     const video = document.getElementById('webcam');
+    const status = document.getElementById('status');
     const preview = document.getElementById('preview');
+    const nombreInput = document.getElementById('nombre');
     let fotoBase64 = null;
 
-    async function init() {
-        const URL_MODELS = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
-        await face-api.nets.tinyFaceDetector.loadFromUri(URL_MODELS);
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        detectarRostro();
-    }
+    // Actualizar reloj
+    setInterval(() => {
+        document.getElementById('txtFecha').innerText = "Fecha/Hora: " + new Date().toLocaleString();
+    }, 1000);
 
-    async function detectarRostro() {
-        const options = new face-api.TinyFaceDetectorOptions({ scoreThreshold: 0.5 });
-        const check = setInterval(async () => {
-            const nombre = document.getElementById('nombre').value.trim();
-            const detections = await face-api.detectAllFaces(video, options);
-
-            if (nombre.length > 5 && detections.length > 0) {
-                capturar();
-                clearInterval(check);
-            } else {
-                document.getElementById('status').innerText = nombre.length > 5 ? "Enfoque su rostro..." : "Escriba su nombre...";
-            }
-        }, 1000);
-    }
-
-    function capturar() {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+    // --- 2. INICIO DE IA Y CÁMARA ---
+    async function cargarApp() {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
         
+        try {
+            status.innerText = "Cargando sensores de seguridad...";
+            await face-api.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user", width: 640 } 
+            });
+            video.srcObject = stream;
+
+            video.onloadedmetadata = () => {
+                video.play();
+                status.innerText = "IA Lista. Ingrese su nombre.";
+                bucleDeteccion();
+            };
+        } catch (err) {
+            status.innerText = "Error: Active el permiso de cámara.";
+            status.style.background = "#f8d7da";
+        }
+    }
+
+    // --- 3. LÓGICA DE DETECCIÓN Y CAPTURA ---
+    async function bucleDeteccion() {
+        const options = new face-api.TinyFaceDetectorOptions({ scoreThreshold: 0.5 });
+        
+        const monitor = setInterval(async () => {
+            const detections = await face-api.detectAllFaces(video, options);
+            const nombreOk = nombreInput.value.trim().length > 7;
+
+            if (nombreOk && detections.length > 0) {
+                ejecutarCaptura();
+                clearInterval(monitor);
+            } else if (!nombreOk) {
+                status.innerText = "Escriba su nombre completo (mín. 8 letras)";
+            } else {
+                status.innerText = "Enfoque su rostro en el recuadro";
+            }
+        }, 800);
+    }
+
+    function ejecutarCaptura() {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        fotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
         preview.src = fotoBase64;
         preview.style.display = "block";
         video.style.display = "none";
+
+        status.innerText = "¡IDENTIDAD VERIFICADA!";
+        status.className = "status-msg done";
         
-        document.getElementById('status').innerText = "IDENTIDAD VALIDADA";
-        document.getElementById('status').style.color = "green";
-        document.getElementById('form-detalles').style.display = "block";
-        document.getElementById('btnEnviar').style.display = "block";
-        document.getElementById('nombre').disabled = true;
+        document.getElementById('form-iperc').style.display = "block";
+        document.getElementById('btnFinalizar').style.display = "block";
+        nombreInput.disabled = true;
     }
 
-    document.getElementById('btnEnviar').onclick = async function() {
+    // --- 4. GENERACIÓN DE PDF Y ENVÍO ---
+    document.getElementById('btnFinalizar').onclick = async function() {
+        const actividad = document.getElementById('actividad').value.trim();
+        if (actividad === "") return alert("Por favor, describa la actividad.");
+
         this.disabled = true;
-        document.getElementById('loader').style.display = "block";
+        document.getElementById('loader-envio').style.display = "block";
 
-        const doc = new jsPDF();
-        const nombre = document.getElementById('nombre').value;
-        const epps = Array.from(document.querySelectorAll('#eppList input:checked')).map(el => el.value);
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const epps = Array.from(document.querySelectorAll('#eppChecklist input:checked')).map(c => c.value);
 
-        // Generar PDF (Diseño rápido)
-        doc.setFontSize(16); doc.text("IPERC CONTINUO - COMATPERU", 10, 20);
-        doc.setFontSize(10);
-        doc.text(`Trabajador: ${nombre}`, 10, 35);
-        doc.text(`Fecha/Hora: ${new Date().toLocaleString()}`, 10, 42);
-        doc.text(`Actividad: ${document.getElementById('actividad').value}`, 10, 50);
-        doc.text(`EPP: ${epps.join(", ")}`, 10, 65, { maxWidth: 180 });
-        doc.addImage(fotoBase64, 'JPEG', 10, 80, 50, 40);
+            // Estética del PDF
+            doc.setFillColor(26, 37, 47); doc.rect(0, 0, 210, 25, 'F');
+            doc.setTextColor(255, 255, 255); doc.text("IPERC CONTINUO - COMATPERU", 105, 15, { align: 'center' });
+            
+            doc.setTextColor(0, 0, 0);
+            doc.text(`TRABAJADOR: ${nombreInput.value}`, 15, 40);
+            doc.text(`FECHA: ${new Date().toLocaleString()}`, 15, 48);
+            doc.text(`LUGAR: Taller de producción COMATPERU`, 15, 56);
+            
+            doc.text("ACTIVIDAD:", 15, 70);
+            doc.setFontSize(10); doc.text(actividad, 15, 78, { maxWidth: 180 });
 
-        // Convertir PDF a Base64 para EmailJS
-        const pdfBase64 = doc.output('datauristring').split(',')[1];
+            doc.setFontSize(12); doc.text("EPP DECLARADO:", 15, 110);
+            let y = 118;
+            epps.forEach(e => { doc.text(`[X] ${e}`, 20, y); y += 8; });
 
-        const templateParams = {
-            nombre_trabajador: nombre,
-            destinatario: "ssoma@corporacioncomat.com",
-            content_base64: pdfBase64 // Este nombre debe coincidir con el adjunto en tu plantilla de EmailJS
-        };
+            doc.text("EVIDENCIA FOTOGRÁFICA:", 130, 110);
+            doc.addImage(fotoBase64, 'JPEG', 130, 115, 60, 45);
 
-        emailjs.send('service_xum0xs6', 'template_3b3pziu', templateParams)
-            .then(() => {
-                alert("IPERC enviado exitosamente a SSOMA.");
-                location.reload();
-            }, (err) => {
-                alert("Error al enviar: " + JSON.stringify(err));
-                this.disabled = false;
-            });
+            // Envío vía EmailJS
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
+            const params = {
+                nombre_trabajador: nombreInput.value,
+                destinatario: "ssoma@corporacioncomat.com",
+                content_base64: pdfBase64
+            };
+
+            await emailjs.send('service_xum0xs6', 'template_3b3pziu', params);
+            
+            alert("✅ IPERC enviado correctamente a SSOMA.");
+            location.reload(); // Reiniciar para el siguiente trabajador
+
+        } catch (error) {
+            alert("Error al enviar: " + error);
+            this.disabled = false;
+            document.getElementById('loader-envio').style.display = "none";
+        }
     };
 
-    init();
+    cargarApp();
 </script>
 </body>
 </html>
