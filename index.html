@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>IPERC CONTINUO - COMATPERU</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <style>
+        :root { --primary: #1a252f; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 10px; display: flex; justify-content: center; }
+        .app-card { background: white; width: 100%; max-width: 480px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); overflow: hidden; }
+        .header { background: var(--primary); color: white; padding: 15px; text-align: center; }
+        .content { padding: 20px; }
+        #video-container { width: 100%; height: 250px; background: #000; border-radius: 8px; position: relative; margin: 15px 0; border: 3px solid #ddd; }
+        video, #preview { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; }
+        #preview { display: none; border-color: var(--success); }
+        .epp-box { display: grid; grid-template-columns: 1fr; gap: 8px; background: #f9f9f9; padding: 12px; border: 1px solid #eee; margin-top: 10px; }
+        .btn-send { width: 100%; padding: 18px; background: var(--success); color: white; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; display: none; font-size: 1.1rem; }
+        input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        #loader { display: none; color: #d35400; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="app-card">
+    <div class="header">
+        <h2 style="margin:0">IPERC CONTINUO</h2>
+        <small>COMATPERU - Taller de Producción</small>
+    </div>
+
+    <div class="content">
+        <p style="font-size: 0.8rem; color: #666;">Lugar: Taller de producción COMATPERU</p>
+        
+        <label><b>Nombre del Trabajador:</b></label>
+        <input type="text" id="nombre" placeholder="Nombre completo...">
+
+        <div id="video-container">
+            <video id="webcam" autoplay muted playsinline></video>
+            <img id="preview">
+        </div>
+        <p id="status" style="text-align:center; font-weight:bold; color: #856404;">Cargando IA...</p>
+
+        <div id="form-detalles" style="display:none;">
+            <label><b>Actividad a desarrollar:</b></label>
+            <textarea id="actividad" rows="2" placeholder="Describa la tarea..."></textarea>
+
+            <label style="margin-top:15px; display:block;"><b>EPP Requerido:</b></label>
+            <div class="epp-box" id="eppList">
+                <label><input type="checkbox" value="Casco con Barbiquejo"> Casco con Barbiquejo</label>
+                <label><input type="checkbox" value="Protección Visual"> Protección Visual (Lentes)</label>
+                <label><input type="checkbox" value="Careta de Soldar/Esmerilar"> Careta de Soldar / Esmerilar</label>
+                <label><input type="checkbox" value="Prot. Respiratoria"> Prot. Respiratoria</label>
+                <label><input type="checkbox" value="Zapato de seguridad"> Zapato de seguridad</label>
+                <label><input type="checkbox" value="Guantes de tarea"> Guantes de seguridad</label>
+            </div>
+            
+            <div id="loader">Enviando a SSOMA, espere...</div>
+            <button class="btn-send" id="btnEnviar">FIRMAR Y ENVIAR A SSOMA</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- CONFIGURACIÓN EMAILJS ---
+    (function() {
+        emailjs.init("TcZn-gA70Gb6W90dO"); // Reemplaza con tu Public Key de EmailJS
+    })();
+
+    const { jsPDF } = window.jspdf;
+    const video = document.getElementById('webcam');
+    const preview = document.getElementById('preview');
+    let fotoBase64 = null;
+
+    async function init() {
+        const URL_MODELS = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+        await face-api.nets.tinyFaceDetector.loadFromUri(URL_MODELS);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        detectarRostro();
+    }
+
+    async function detectarRostro() {
+        const options = new face-api.TinyFaceDetectorOptions({ scoreThreshold: 0.5 });
+        const check = setInterval(async () => {
+            const nombre = document.getElementById('nombre').value.trim();
+            const detections = await face-api.detectAllFaces(video, options);
+
+            if (nombre.length > 5 && detections.length > 0) {
+                capturar();
+                clearInterval(check);
+            } else {
+                document.getElementById('status').innerText = nombre.length > 5 ? "Enfoque su rostro..." : "Escriba su nombre...";
+            }
+        }, 1000);
+    }
+
+    function capturar() {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        fotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        
+        preview.src = fotoBase64;
+        preview.style.display = "block";
+        video.style.display = "none";
+        
+        document.getElementById('status').innerText = "IDENTIDAD VALIDADA";
+        document.getElementById('status').style.color = "green";
+        document.getElementById('form-detalles').style.display = "block";
+        document.getElementById('btnEnviar').style.display = "block";
+        document.getElementById('nombre').disabled = true;
+    }
+
+    document.getElementById('btnEnviar').onclick = async function() {
+        this.disabled = true;
+        document.getElementById('loader').style.display = "block";
+
+        const doc = new jsPDF();
+        const nombre = document.getElementById('nombre').value;
+        const epps = Array.from(document.querySelectorAll('#eppList input:checked')).map(el => el.value);
+
+        // Generar PDF (Diseño rápido)
+        doc.setFontSize(16); doc.text("IPERC CONTINUO - COMATPERU", 10, 20);
+        doc.setFontSize(10);
+        doc.text(`Trabajador: ${nombre}`, 10, 35);
+        doc.text(`Fecha/Hora: ${new Date().toLocaleString()}`, 10, 42);
+        doc.text(`Actividad: ${document.getElementById('actividad').value}`, 10, 50);
+        doc.text(`EPP: ${epps.join(", ")}`, 10, 65, { maxWidth: 180 });
+        doc.addImage(fotoBase64, 'JPEG', 10, 80, 50, 40);
+
+        // Convertir PDF a Base64 para EmailJS
+        const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+        const templateParams = {
+            nombre_trabajador: nombre,
+            destinatario: "ssoma@corporacioncomat.com",
+            content_base64: pdfBase64 // Este nombre debe coincidir con el adjunto en tu plantilla de EmailJS
+        };
+
+        emailjs.send('service_xum0xs6', 'template_3b3pziu', templateParams)
+            .then(() => {
+                alert("IPERC enviado exitosamente a SSOMA.");
+                location.reload();
+            }, (err) => {
+                alert("Error al enviar: " + JSON.stringify(err));
+                this.disabled = false;
+            });
+    };
+
+    init();
+</script>
+</body>
+</html>
